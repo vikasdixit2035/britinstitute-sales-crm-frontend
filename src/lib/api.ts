@@ -29,6 +29,7 @@ import type {
   ZoomPhoneNumberAssignmentsResponse,
   ZoomPhoneStatus,
   ZoomTalkTimeResponse,
+  ZoomUserCallSummary,
 } from '../types';
 import { defaultStatusOptions } from '../types';
 
@@ -1098,6 +1099,21 @@ export const zoomPhoneApi = {
   getMyTalkTime: async (timezone: string): Promise<ApiResponse<ZoomTalkTimeResponse>> => {
     try {
       const response = await api.get('/zoom-phone/my/talk-time', { params: { timezone } });
+      return handleResponse(response);
+    } catch (error) {
+      return handleError(error);
+    }
+  },
+  getUserCallSummary: async (
+    userId: string,
+    query: Pick<ZoomPhoneQuery, 'from' | 'to'> & { timezone: string }
+  ): Promise<ApiResponse<ZoomUserCallSummary>> => {
+    try {
+      const params = new URLSearchParams();
+      if (query.from) params.append('from', query.from);
+      if (query.to) params.append('to', query.to);
+      params.append('timezone', query.timezone);
+      const response = await api.get(`/zoom-phone/users/${encodeURIComponent(userId)}/call-summary?${params.toString()}`);
       return handleResponse(response);
     } catch (error) {
       return handleError(error);

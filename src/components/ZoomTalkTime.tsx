@@ -59,13 +59,13 @@ export default function ZoomTalkTime() {
   }, [user?._id]);
 
   return (
-    <section className="card" aria-label="Your Zoom talk time" aria-busy={loading}>
+    <section className="card" aria-label="Your Zoom Phone activity" aria-busy={loading}>
       <div className="card-header">
         <div>
-          <h2 className="card-title">Your Zoom Talk Time</h2>
-          <p className="card-subtitle">Phone activity · This week starts Sunday</p>
+          <h2 className="card-title">Your Zoom Phone Activity</h2>
+          <p className="card-subtitle">Actual talk time, call attempts, and unique contacts · Week starts Sunday</p>
         </div>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={refresh} disabled={loading} aria-label="Refresh your Zoom talk time">
+        <button type="button" className="btn btn-secondary btn-sm" onClick={refresh} disabled={loading} aria-label="Refresh your Zoom Phone activity">
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </button>
@@ -81,20 +81,25 @@ export default function ZoomTalkTime() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             {[
-              { label: 'Today', seconds: data?.daily.talk_time_seconds, connected: data?.daily.connected_calls, dialed: data?.daily.dialed_calls, icon: PhoneCall },
-              { label: 'This week', seconds: data?.weekly.talk_time_seconds, connected: data?.weekly.connected_calls, dialed: data?.weekly.dialed_calls, icon: Clock }
-            ].map(({ label, seconds, connected, dialed, icon: Icon }) => (
+              { label: 'Today', period: data?.daily, icon: PhoneCall },
+              { label: 'This week', period: data?.weekly, icon: Clock }
+            ].map(({ label, period, icon: Icon }) => (
               <div key={label} className="metric-card metric-card--blue">
                 <div className="metric-card__top">
                   <p className="metric-card__label">{label}</p>
                   <Icon className="h-5 w-5" />
                 </div>
-                <p className="metric-card__value">{seconds === undefined ? 'Loading…' : formatTalkTime(seconds)}</p>
+                <p className="metric-card__value">{period === undefined ? 'Loading…' : formatTalkTime(period.talk_time_seconds)}</p>
                 <p className="metric-card__change">
-                  {connected === undefined || dialed === undefined
+                  {period === undefined
                     ? 'Retrieving Zoom calls'
-                    : `${connected} connected ${connected === 1 ? 'call' : 'calls'} · ${dialed} dialed ${dialed === 1 ? 'call' : 'calls'}`}
+                    : `${period.connected_outbound_calls} answered outbound · ${period.outbound_calls} outbound attempts`}
                 </p>
+                {period && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    {period.unique_outbound_contacts} unique people called · {period.inbound_calls} inbound · {period.total_calls} total calls
+                  </p>
+                )}
               </div>
             ))}
           </div>
@@ -102,6 +107,11 @@ export default function ZoomTalkTime() {
         {data && !error && data.linked && (
           <p className="mt-3 text-xs text-gray-500">
             {data.timezone} · Week: {data.weekly.from} to {data.weekly.to} · Updated {new Date(data.updated_at).toLocaleTimeString()} · Refreshes every minute
+          </p>
+        )}
+        {data && !error && data.linked && (
+          <p className="mt-1 text-xs text-gray-500">
+            Talk time excludes ringing. Attempts count unique Zoom calls; unique people count distinct external phone numbers.
           </p>
         )}
       </div>

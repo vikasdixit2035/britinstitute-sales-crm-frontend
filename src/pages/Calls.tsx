@@ -30,7 +30,8 @@ import type {
   ZoomPhoneLiveStatusResponse,
   ZoomPhoneMetricCall,
   ZoomPhoneRecording,
-  ZoomPhoneStatus
+  ZoomPhoneStatus,
+  ZoomUserCallSummary
 } from '../types';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 
@@ -479,6 +480,9 @@ const Calls: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('All');
   const [directionFilter, setDirectionFilter] = useState('All');
   const [userFilter, setUserFilter] = useState('All');
+  const [selectedUserSummary, setSelectedUserSummary] = useState<ZoomUserCallSummary | null>(null);
+  const [selectedUserSummaryLoading, setSelectedUserSummaryLoading] = useState(false);
+  const [selectedUserSummaryError, setSelectedUserSummaryError] = useState('');
   const [historyPage, setHistoryPage] = useState(1);
   const [historyPageSize, setHistoryPageSize] = useState(15);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -800,6 +804,41 @@ const Calls: React.FC = () => {
   );
 
   useEffect(() => {
+    const selectedUserId = userFilter.startsWith('crm:') ? userFilter.slice(4) : '';
+    if (user?.role !== 'admin' || !selectedUserId) {
+      setSelectedUserSummary(null);
+      setSelectedUserSummaryError('');
+      setSelectedUserSummaryLoading(false);
+      return;
+    }
+
+    let active = true;
+    setSelectedUserSummary(null);
+    setSelectedUserSummaryError('');
+    setSelectedUserSummaryLoading(true);
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    void zoomPhoneApi.getUserCallSummary(selectedUserId, { from: fromDate, to: toDate, timezone })
+      .then((response) => {
+        if (!active) return;
+        if (response.success && response.data) {
+          setSelectedUserSummary(response.data);
+        } else {
+          setSelectedUserSummaryError(response.message || 'Unable to load this user’s Zoom call summary');
+        }
+      })
+      .catch(() => {
+        if (active) setSelectedUserSummaryError('Unable to load this user’s Zoom call summary');
+      })
+      .finally(() => {
+        if (active) setSelectedUserSummaryLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [fromDate, toDate, user?.role, userFilter]);
+
+  useEffect(() => {
     if (userFilter !== 'All' && !selectedUserOption) {
       setUserFilter('All');
     }
@@ -898,7 +937,7 @@ const Calls: React.FC = () => {
       totalTalkTime,
       recordedCallCount,
       recordingFileCount,
-      averageCallDuration: totalCalls ? Math.round(totalTalkTime / totalCalls) : 0,
+      averageCallDuration: filteredHistory.length ? Math.round(totalTalkTime / filteredHistory.length) : 0,
       answerRate: totalCalls ? Math.round((connectedCalls / totalCalls) * 100) : 0
     };
   }, [filteredHistory]);
@@ -1215,44 +1254,44 @@ const Calls: React.FC = () => {
 
   const historyCards = [
     {
-      label: 'Total Calls',
+      label: 'Unique Contacts',
       value: filteredReport.totalCalls,
-      helper: `Including duplicate calls: ${filteredReport.totalCallAttempts}`,
+      helper: `${filteredReport.totalCallAttempts} Zoom call-log records`,
       icon: PhoneCall,
       tone: 'metric-card--blue'
     },
     {
-      label: 'Incoming',
+      label: 'Unique Incoming Contacts',
       value: filteredReport.incomingCalls,
-      helper: `Including duplicate calls: ${filteredReport.incomingCallAttempts}`,
+      helper: `${filteredReport.incomingCallAttempts} incoming log records`,
       icon: Headphones,
       tone: 'metric-card--green'
     },
     {
-      label: 'Outgoing',
+      label: 'Unique Outgoing Contacts',
       value: filteredReport.outgoingCalls,
-      helper: `Including duplicate calls: ${filteredReport.outgoingCallAttempts}`,
+      helper: `${filteredReport.outgoingCallAttempts} outgoing log records`,
       icon: BarChart3,
       tone: 'metric-card--amber'
     },
     {
-      label: 'Missed',
+      label: 'Unique Missed Contacts',
       value: filteredReport.missedCalls,
       helper: 'Needs callback follow-up',
       icon: Voicemail,
       tone: 'metric-card--rose'
     },
     {
-      label: 'Answer Rate',
+      label: 'Contact Answer Rate',
       value: `${filteredReport.answerRate}%`,
-      helper: `${filteredReport.connectedCalls} connected calls`,
+      helper: `${filteredReport.connectedCalls} unique connected contacts`,
       icon: CheckCircle,
       tone: 'metric-card--green'
     },
     {
-      label: 'Avg Duration',
+      label: 'Avg Log Duration',
       value: formatDuration(filteredReport.averageCallDuration),
-      helper: `${formatTalkTime(filteredReport.totalTalkTime)} total talk time`,
+      helper: `${formatTalkTime(filteredReport.totalTalkTime)} summed Zoom log duration`,
       icon: Clock,
       tone: 'metric-card--blue'
     },
@@ -1582,7 +1621,7 @@ const Calls: React.FC = () => {
           {selectedUserOption && (
             <div className="card">
               <div className="card-body">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-5">
                   <div className="flex items-center gap-3">
                     <span className="avatar">
                       <UserRound className="h-4 w-4" />
@@ -1596,22 +1635,66 @@ const Calls: React.FC = () => {
                       <p className="text-sm text-gray-500">{selectedUserOption.meta}</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+
+                  <div>
+                    <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="text-sm font-bold text-gray-800">Zoom user activity</p>
+                      <p className="text-xs text-gray-500">Same as the salesperson dashboard · date filters only</p>
+                    </div>
+                    {selectedUserSummaryLoading ? (
+                      <p className="text-sm text-gray-500">Loading Zoom user activity…</p>
+                    ) : selectedUserSummaryError ? (
+                      <p className="text-sm text-rose-600">{selectedUserSummaryError}</p>
+                    ) : selectedUserSummary && !selectedUserSummary.linked ? (
+                      <p className="text-sm text-amber-700">This CRM user is not linked to a Zoom Phone user or number assignment.</p>
+                    ) : selectedUserSummary ? (
+                      <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 xl:grid-cols-5">
+                        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                          <p className="font-extrabold text-gray-950">{selectedUserSummary.outbound_calls}</p>
+                          <p className="text-gray-600">Outbound attempts</p>
+                        </div>
+                        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                          <p className="font-extrabold text-gray-950">{selectedUserSummary.connected_outbound_calls}</p>
+                          <p className="text-gray-600">Answered outbound</p>
+                        </div>
+                        <div className="rounded-lg border border-violet-200 bg-violet-50 p-3">
+                          <p className="font-extrabold text-gray-950">{selectedUserSummary.unique_outbound_contacts}</p>
+                          <p className="text-gray-600">Unique people called</p>
+                        </div>
+                        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                          <p className="font-extrabold text-gray-950">{selectedUserSummary.inbound_calls}</p>
+                          <p className="text-gray-600">Inbound calls</p>
+                        </div>
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                          <p className="font-extrabold text-gray-950">{formatTalkTime(selectedUserSummary.talk_time_seconds)}</p>
+                          <p className="text-gray-600">Actual talk time</p>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div>
+                    <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="text-sm font-bold text-gray-800">Account call-log coverage</p>
+                      <p className="text-xs text-gray-500">Admin metrics feed · uses all Call History filters</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                     <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                       <p className="font-extrabold text-gray-950">{filteredReport.totalCalls}</p>
-                      <p className="text-gray-500">Calls</p>
+                      <p className="text-gray-500">Unique contacts</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                      <p className="font-extrabold text-gray-950">{filteredReport.totalCallAttempts}</p>
+                      <p className="text-gray-500">Call-log records</p>
                     </div>
                     <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                       <p className="font-extrabold text-gray-950">{filteredReport.connectedCalls}</p>
-                      <p className="text-gray-500">Connected</p>
+                      <p className="text-gray-500">Connected contacts</p>
                     </div>
                     <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                       <p className="font-extrabold text-gray-950">{formatTalkTime(filteredReport.totalTalkTime)}</p>
-                      <p className="text-gray-500">Talk time</p>
+                      <p className="text-gray-500">Summed log duration</p>
                     </div>
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                      <p className="font-extrabold text-gray-950">{filteredReport.answerRate}%</p>
-                      <p className="text-gray-500">Answer rate</p>
                     </div>
                   </div>
                 </div>

@@ -1,10 +1,36 @@
 // Authentication Types
+export interface ZoomCallSummary {
+  from: string;
+  to: string;
+  talk_time_seconds: number;
+  total_calls: number;
+  inbound_calls: number;
+  outbound_calls: number;
+  connected_calls: number;
+  connected_outbound_calls: number;
+  unique_contacts: number;
+  unique_outbound_contacts: number;
+  connected_unique_contacts: number;
+}
+
+export interface ZoomTalkTimePeriod extends ZoomCallSummary {
+  date?: string;
+  total_connected_calls: number;
+  dialed_calls: number;
+}
+
 export interface ZoomTalkTimeResponse {
   linked: boolean;
   timezone: string;
   updated_at: string;
-  daily: { date: string; talk_time_seconds: number; connected_calls: number; dialed_calls: number };
-  weekly: { from: string; to: string; talk_time_seconds: number; connected_calls: number; dialed_calls: number };
+  daily: ZoomTalkTimePeriod & { date: string };
+  weekly: ZoomTalkTimePeriod;
+}
+
+export interface ZoomUserCallSummary extends ZoomCallSummary {
+  linked: boolean;
+  timezone: string;
+  updated_at: string;
 }
 
 export interface AssignmentHistoryItem {
