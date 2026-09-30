@@ -49,6 +49,13 @@ export interface AuthState {
   isLoading: boolean;
 }
 
+export interface MetaAttribute {
+  key: string;
+  label: string;
+  value: string;
+  rawValue?: string;
+}
+
 // Lead Types
 // Lead Types (BACKWARD COMPATIBLE)
 export interface Lead {
@@ -80,6 +87,7 @@ export interface Lead {
   metaOriginalName?: string;
   metaOriginalEmail?: string;
   metaOriginalPhone?: string;
+  metaAttributes?: MetaAttribute[];
   metaRawPayload?: Record<string, unknown>;
   qualifiedAt?: string;
   convertedAt?: string;
@@ -104,6 +112,11 @@ export interface Lead {
   assignedBy?: string;
   assignedToUser?: User;
   assignedByUser?: User;
+  lastContactedAt?: string;
+  lastContactedBy?: string;
+  lastContactedByName?: string;
+  lastContactedByEmail?: string;
+  lastContactedByUser?: User;
 
   notes: LeadNote[];
   leadScore?: number;
@@ -759,7 +772,9 @@ export interface LeadFilters {
   createdToDate?: string;
   modifiedFromDate?: string;
   modifiedToDate?: string;
-  dateField?: 'createdAt' | 'updatedAt';
+  lastContactedFromDate?: string;
+  lastContactedToDate?: string;
+  dateField?: 'createdAt' | 'updatedAt' | 'lastContactedAt';
   timezoneOffsetMinutes?: string;
   dateRange?: {
     from: string;

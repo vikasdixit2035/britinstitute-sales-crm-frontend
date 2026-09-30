@@ -1,6 +1,6 @@
 import type { Lead } from '../types';
 
-export type DateField = 'createdAt' | 'updatedAt';
+export type DateField = 'createdAt' | 'updatedAt' | 'lastContactedAt';
 export type PresetRange = 'today' | '7d' | '30d' | '90d' | 'week' | 'month' | 'all' | 'custom';
 
 export interface DateFilterState {
@@ -72,6 +72,44 @@ export const toLeadCreatedAndModifiedDateParams = (
   };
 };
 
+export const toLeadCreatedAndLastContactedDateParams = (
+  createdRange: DateFilterState,
+  lastContactedRange: DateFilterState
+) => {
+  const hasCreatedRange = isDateFilterActive(createdRange);
+  const hasLastContactedRange = isDateFilterActive(lastContactedRange);
+  if (!hasCreatedRange && !hasLastContactedRange) return {};
+
+  return {
+    createdFromDate: createdRange.fromDate || undefined,
+    createdToDate: createdRange.toDate || undefined,
+    lastContactedFromDate: lastContactedRange.fromDate || undefined,
+    lastContactedToDate: lastContactedRange.toDate || undefined,
+    timezoneOffsetMinutes: getTimezoneOffsetParam()
+  };
+};
+
+export const toLeadCreatedModifiedAndLastContactedDateParams = (
+  createdRange: DateFilterState,
+  modifiedRange: DateFilterState,
+  lastContactedRange: DateFilterState
+) => {
+  const hasCreatedRange = isDateFilterActive(createdRange);
+  const hasModifiedRange = isDateFilterActive(modifiedRange);
+  const hasLastContactedRange = isDateFilterActive(lastContactedRange);
+  if (!hasCreatedRange && !hasModifiedRange && !hasLastContactedRange) return {};
+
+  return {
+    createdFromDate: createdRange.fromDate || undefined,
+    createdToDate: createdRange.toDate || undefined,
+    modifiedFromDate: modifiedRange.fromDate || undefined,
+    modifiedToDate: modifiedRange.toDate || undefined,
+    lastContactedFromDate: lastContactedRange.fromDate || undefined,
+    lastContactedToDate: lastContactedRange.toDate || undefined,
+    timezoneOffsetMinutes: getTimezoneOffsetParam()
+  };
+};
+
 export const getLeadDateFilterSummary = (
   createdRange: DateFilterState,
   modifiedRange: DateFilterState
@@ -82,6 +120,44 @@ export const getLeadDateFilterSummary = (
   }
   if (isDateFilterActive(modifiedRange)) {
     descriptions.push(`modified ${modifiedRange.fromDate || 'from start'} to ${modifiedRange.toDate || 'today'}`);
+  }
+
+  return descriptions.length ? `Showing leads ${descriptions.join(' and ')}` : 'Showing leads from all dates';
+};
+
+export const getLeadCreatedAndLastContactedDateFilterSummary = (
+  createdRange: DateFilterState,
+  lastContactedRange: DateFilterState
+) => {
+  const descriptions: string[] = [];
+  if (isDateFilterActive(createdRange)) {
+    descriptions.push(`created ${createdRange.fromDate || 'from start'} to ${createdRange.toDate || 'today'}`);
+  }
+  if (isDateFilterActive(lastContactedRange)) {
+    descriptions.push(
+      `last contacted ${lastContactedRange.fromDate || 'from start'} to ${lastContactedRange.toDate || 'today'}`
+    );
+  }
+
+  return descriptions.length ? `Showing leads ${descriptions.join(' and ')}` : 'Showing leads from all dates';
+};
+
+export const getLeadThreeDateRangesFilterSummary = (
+  createdRange: DateFilterState,
+  modifiedRange: DateFilterState,
+  lastContactedRange: DateFilterState
+) => {
+  const descriptions: string[] = [];
+  if (isDateFilterActive(createdRange)) {
+    descriptions.push(`created ${createdRange.fromDate || 'from start'} to ${createdRange.toDate || 'today'}`);
+  }
+  if (isDateFilterActive(modifiedRange)) {
+    descriptions.push(`modified ${modifiedRange.fromDate || 'from start'} to ${modifiedRange.toDate || 'today'}`);
+  }
+  if (isDateFilterActive(lastContactedRange)) {
+    descriptions.push(
+      `last contacted ${lastContactedRange.fromDate || 'from start'} to ${lastContactedRange.toDate || 'today'}`
+    );
   }
 
   return descriptions.length ? `Showing leads ${descriptions.join(' and ')}` : 'Showing leads from all dates';

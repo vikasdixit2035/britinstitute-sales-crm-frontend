@@ -153,6 +153,8 @@ const appendLeadDateParams = (params: URLSearchParams, filters?: Partial<LeadFil
   if (filters.createdToDate) params.append('createdToDate', filters.createdToDate);
   if (filters.modifiedFromDate) params.append('modifiedFromDate', filters.modifiedFromDate);
   if (filters.modifiedToDate) params.append('modifiedToDate', filters.modifiedToDate);
+  if (filters.lastContactedFromDate) params.append('lastContactedFromDate', filters.lastContactedFromDate);
+  if (filters.lastContactedToDate) params.append('lastContactedToDate', filters.lastContactedToDate);
   if (filters.dateField) params.append('dateField', filters.dateField);
   if (filters.timezoneOffsetMinutes) params.append('timezoneOffsetMinutes', filters.timezoneOffsetMinutes);
 };

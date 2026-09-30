@@ -15,6 +15,7 @@ import type {
 import LeadWhatsAppButton from '../components/LeadWhatsAppButton';
 import StatusReminderDialog from '../components/StatusReminderDialog';
 import { statusNeedsReminder, type StatusReminderSchedule } from '../lib/statusReminder';
+import { getLeadMetaAttributes } from '../lib/metaAttributes';
 import type { DateFilterState } from '../lib/dateFilters';
 import {
   AlertCircle,
@@ -63,6 +64,9 @@ export interface ReturnState {
   createdToDate?: string;
   modifiedFromDate?: string;
   modifiedToDate?: string;
+  lastContactedDateRange?: DateFilterState;
+  lastContactedFromDate?: string;
+  lastContactedToDate?: string;
 }
 
 export const defaultStatusOptions: LeadStatus[] = [
@@ -213,6 +217,7 @@ const LeadDetails: React.FC = () => {
 
   const canManage = user?.role === 'admin';
   const canEdit = canManage || lead?.assignedTo === user?._id;
+  const metaAttributes = useMemo(() => (lead ? getLeadMetaAttributes(lead) : []), [lead]);
 
   const syncLeadState = (nextLead: Lead) => {
     setLead(nextLead);
@@ -518,11 +523,15 @@ const LeadDetails: React.FC = () => {
       const createdTo = state.createdDateRange?.toDate || state.createdToDate;
       const modifiedFrom = state.modifiedDateRange?.fromDate || state.modifiedFromDate;
       const modifiedTo = state.modifiedDateRange?.toDate || state.modifiedToDate;
+      const lastContactedFrom = state.lastContactedDateRange?.fromDate || state.lastContactedFromDate;
+      const lastContactedTo = state.lastContactedDateRange?.toDate || state.lastContactedToDate;
 
       if (createdFrom) params.set('createdFromDate', createdFrom);
       if (createdTo) params.set('createdToDate', createdTo);
       if (modifiedFrom) params.set('modifiedFromDate', modifiedFrom);
       if (modifiedTo) params.set('modifiedToDate', modifiedTo);
+      if (lastContactedFrom) params.set('lastContactedFromDate', lastContactedFrom);
+      if (lastContactedTo) params.set('lastContactedToDate', lastContactedTo);
 
       const queryString = params.toString();
       navigate(queryString ? `${state.returnTo}?${queryString}` : state.returnTo, {
@@ -1503,6 +1512,28 @@ const LeadDetails: React.FC = () => {
                   <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
                     Feedback error: {lead.metaFeedbackLastError}
                   </p>
+                )}
+                {metaAttributes.length > 0 && (
+                  <div className="pt-3 border-t border-slate-200/80 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                        Form Responses ({metaAttributes.length})
+                      </span>
+                    </div>
+                    {metaAttributes.map((attr) => (
+                      <div key={attr.key} className="lead-summary-row items-start py-1 border-b border-slate-100 last:border-b-0">
+                        <span className="text-xs sm:text-sm font-medium text-slate-500 max-w-[48%] text-left" title={attr.label}>
+                          {attr.label}
+                        </span>
+                        <strong
+                          className="text-right text-xs sm:text-sm font-semibold text-slate-900 break-words max-w-[52%] whitespace-pre-wrap"
+                          title={attr.rawValue && attr.rawValue !== attr.value ? `Raw value: ${attr.rawValue}` : undefined}
+                        >
+                          {attr.value}
+                        </strong>
+                      </div>
+                    ))}
+                  </div>
                 )}
                 {lead.metaRawPayload && (
                   <details className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs">

@@ -7,7 +7,11 @@ import { defaultStatusOptions, type ReturnState } from './LeadDetails';
 import LeadWhatsAppButton from '../components/LeadWhatsAppButton';
 import QuickLeadSearch from '../components/QuickLeadSearch';
 import StatusReminderDialog from '../components/StatusReminderDialog';
-import { getLeadDateFilterSummary, toLeadCreatedAndModifiedDateParams, type DateFilterState } from '../lib/dateFilters';
+import {
+  getLeadThreeDateRangesFilterSummary,
+  toLeadCreatedModifiedAndLastContactedDateParams,
+  type DateFilterState
+} from '../lib/dateFilters';
 import { statusNeedsReminder, type StatusReminderSchedule } from '../lib/statusReminder';
 import { 
   Search, 
@@ -107,6 +111,16 @@ const AllLeads: React.FC = () => {
     returnState?.modifiedDateRange?.toDate ||
     returnState?.modifiedToDate ||
     '';
+  const initialLastContactedFrom =
+    searchParams.get('lastContactedFromDate') ||
+    returnState?.lastContactedDateRange?.fromDate ||
+    returnState?.lastContactedFromDate ||
+    '';
+  const initialLastContactedTo =
+    searchParams.get('lastContactedToDate') ||
+    returnState?.lastContactedDateRange?.toDate ||
+    returnState?.lastContactedToDate ||
+    '';
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -145,6 +159,10 @@ const AllLeads: React.FC = () => {
     fromDate: initialModifiedFrom,
     toDate: initialModifiedTo
   });
+  const [lastContactedDateRange, setLastContactedDateRange] = useState<DateFilterState>({
+    fromDate: initialLastContactedFrom,
+    toDate: initialLastContactedTo
+  });
   const [pendingBulkReminderStatus, setPendingBulkReminderStatus] = useState<LeadStatus | null>(null);
 
   const safeReturnFolders = (returnState?.filters?.folder || []).filter(
@@ -175,7 +193,12 @@ const AllLeads: React.FC = () => {
 
   const priorityOptions: LeadPriority[] = ['High', 'Medium', 'Low'];
   const assignedToOptions = users.map(user => ({ id: user._id, name: user.name, email: user.email }));
-  const getDateFilters = () => toLeadCreatedAndModifiedDateParams(createdDateRange, modifiedDateRange);
+  const getDateFilters = () =>
+    toLeadCreatedModifiedAndLastContactedDateParams(
+      createdDateRange,
+      modifiedDateRange,
+      lastContactedDateRange
+    );
 
   useEffect(() => {
     if (currentView === 'folders') {
@@ -183,7 +206,16 @@ const AllLeads: React.FC = () => {
     } else {
       fetchLeads();
     }
-  }, [currentPage, filters, currentView, leadsPerPage, appliedSearchQuery, createdDateRange, modifiedDateRange]);
+  }, [
+    currentPage,
+    filters,
+    currentView,
+    leadsPerPage,
+    appliedSearchQuery,
+    createdDateRange,
+    modifiedDateRange,
+    lastContactedDateRange
+  ]);
 
   useEffect(() => {
     fetchUsers();
@@ -217,15 +249,18 @@ const AllLeads: React.FC = () => {
   };
 
   const handleDateChange = (
-    type: 'created' | 'modified',
+    type: 'created' | 'modified' | 'lastContacted',
     field: 'fromDate' | 'toDate',
     value: string
   ) => {
     const nextCreated = type === 'created' ? { ...createdDateRange, [field]: value } : createdDateRange;
     const nextModified = type === 'modified' ? { ...modifiedDateRange, [field]: value } : modifiedDateRange;
+    const nextLastContacted =
+      type === 'lastContacted' ? { ...lastContactedDateRange, [field]: value } : lastContactedDateRange;
 
     if (type === 'created') setCreatedDateRange(nextCreated);
     if (type === 'modified') setModifiedDateRange(nextModified);
+    if (type === 'lastContacted') setLastContactedDateRange(nextLastContacted);
     setCurrentPage(1);
     setSelectedLeads([]);
 
@@ -238,6 +273,8 @@ const AllLeads: React.FC = () => {
       modifiedToDate: nextModified.toDate || null,
       modifiedFrom: null,
       modifiedTo: null,
+      lastContactedFromDate: nextLastContacted.fromDate || null,
+      lastContactedToDate: nextLastContacted.toDate || null,
       page: null
     });
   };
@@ -245,6 +282,7 @@ const AllLeads: React.FC = () => {
   const handleClearDates = () => {
     setCreatedDateRange({ fromDate: '', toDate: '' });
     setModifiedDateRange({ fromDate: '', toDate: '' });
+    setLastContactedDateRange({ fromDate: '', toDate: '' });
     setCurrentPage(1);
     setSelectedLeads([]);
 
@@ -257,6 +295,8 @@ const AllLeads: React.FC = () => {
       modifiedToDate: null,
       modifiedFrom: null,
       modifiedTo: null,
+      lastContactedFromDate: null,
+      lastContactedToDate: null,
       page: null
     });
   };
@@ -389,6 +429,7 @@ const AllLeads: React.FC = () => {
     setFilters({ status: preservedStatus, source: [], priority: [], assignedTo: [], folder: preservedFolder });
     setCreatedDateRange({ fromDate: '', toDate: '' });
     setModifiedDateRange({ fromDate: '', toDate: '' });
+    setLastContactedDateRange({ fromDate: '', toDate: '' });
     setSearchQuery('');
     setAppliedSearchQuery('');
     setCurrentPage(1);
@@ -407,7 +448,9 @@ const AllLeads: React.FC = () => {
       modifiedFromDate: null,
       modifiedToDate: null,
       modifiedFrom: null,
-      modifiedTo: null
+      modifiedTo: null,
+      lastContactedFromDate: null,
+      lastContactedToDate: null
     });
   };
 
@@ -493,7 +536,8 @@ const AllLeads: React.FC = () => {
         selectedFolder: isStatusName(selectedFolder) ? null : selectedFolder,
         statusFilter: isStatusName(selectedFolder) ? selectedFolder : (filters.status?.[0] || undefined),
         createdDateRange,
-        modifiedDateRange
+        modifiedDateRange,
+        lastContactedDateRange
       }
     });
   };
@@ -757,7 +801,7 @@ const AllLeads: React.FC = () => {
 
       <div className="card">
         <div className="card-body">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_auto] xl:items-end">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[repeat(6,minmax(0,1fr))_auto] xl:items-end">
             <div>
               <label className="form-label">Created From</label>
               <input
@@ -798,6 +842,26 @@ const AllLeads: React.FC = () => {
                 className="form-input"
               />
             </div>
+            <div>
+              <label className="form-label">Last Contacted From</label>
+              <input
+                type="date"
+                value={lastContactedDateRange.fromDate}
+                max={lastContactedDateRange.toDate || undefined}
+                onChange={(event) => handleDateChange('lastContacted', 'fromDate', event.target.value)}
+                className="form-input"
+              />
+            </div>
+            <div>
+              <label className="form-label">Last Contacted To</label>
+              <input
+                type="date"
+                value={lastContactedDateRange.toDate}
+                min={lastContactedDateRange.fromDate || undefined}
+                onChange={(event) => handleDateChange('lastContacted', 'toDate', event.target.value)}
+                className="form-input"
+              />
+            </div>
             <button
               type="button"
               onClick={handleClearDates}
@@ -805,8 +869,12 @@ const AllLeads: React.FC = () => {
             >
               Clear Dates
             </button>
-            <div className="text-sm text-gray-500 md:col-span-2 xl:col-span-5">
-              {getLeadDateFilterSummary(createdDateRange, modifiedDateRange)}
+            <div className="text-sm text-gray-500 md:col-span-2 xl:col-span-7">
+              {getLeadThreeDateRangesFilterSummary(
+                createdDateRange,
+                modifiedDateRange,
+                lastContactedDateRange
+              )}
             </div>
           </div>
         </div>
@@ -1150,6 +1218,8 @@ const AllLeads: React.FC = () => {
                 <th className="whitespace-nowrap">Assigned To</th>
                 <th className="whitespace-nowrap">Notes</th>
                 <th className="whitespace-nowrap">Created</th>
+                <th className="whitespace-nowrap">Last Contacted</th>
+                <th className="whitespace-nowrap">Last Contacted By</th>
                 <th className="whitespace-nowrap">Actions</th>
               </tr>
             </thead>
@@ -1242,6 +1312,32 @@ const AllLeads: React.FC = () => {
                       <Calendar className="w-3 h-3 mr-1" />
                       {new Date(lead.createdAt).toLocaleDateString()}
                     </div>
+                  </td>
+                  <td className="whitespace-nowrap">
+                    {lead.lastContactedAt ? (
+                      <div className="flex items-center text-sm text-gray-500">
+                        <Calendar className="w-3 h-3 mr-1" />
+                        {new Date(lead.lastContactedAt).toLocaleString()}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-400">Not contacted</span>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap">
+                    {lead.lastContactedByUser || lead.lastContactedByName ? (
+                      <div className="text-sm">
+                        <div className="font-medium">
+                          {lead.lastContactedByUser?.name || lead.lastContactedByName}
+                        </div>
+                        {(lead.lastContactedByUser?.email || lead.lastContactedByEmail) && (
+                          <div className="text-gray-500">
+                            {lead.lastContactedByUser?.email || lead.lastContactedByEmail}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-400">—</span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
