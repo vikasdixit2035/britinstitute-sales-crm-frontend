@@ -120,6 +120,24 @@ export interface Lead {
   metaFeedbackLastStatus?: string;
   metaFeedbackLastSentAt?: string;
   metaFeedbackLastError?: string;
+  duplicateOf?: string | {
+    _id: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    status?: LeadStatus;
+    folder?: string;
+  };
+  duplicateSequence?: number;
+  duplicateLabel?: string;
+  duplicateMatchReason?: 'NAME_EXISTS' | 'EMAIL_EXISTS' | 'PHONE_EXISTS' | 'EMAIL_PHONE_EXISTS';
+  duplicateLinks?: Array<{
+    _id: string;
+    name: string;
+    status: LeadStatus;
+    duplicateSequence: number;
+    duplicateLabel: string;
+  }>;
 
   label?: string;
   labels?: string[];

@@ -1221,9 +1221,40 @@ a {
 
 .lead-profile-panel__actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
   margin: 6px 0 0;
+}
+
+.lead-duplicate-link {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 14px;
+  color: #b91c1c;
+  background: #fff1f2;
+  border: 1px solid #fda4af;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(190, 18, 60, 0.12);
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.lead-duplicate-link:hover {
+  color: #991b1b;
+  background: #ffe4e6;
+  border-color: #fb7185;
+  transform: translateY(-1px);
+}
+
+.lead-duplicate-link:focus-visible {
+  outline: 3px solid rgba(244, 63, 94, 0.25);
+  outline-offset: 2px;
 }
 
 .lead-profile-panel__actions .icon-button span {

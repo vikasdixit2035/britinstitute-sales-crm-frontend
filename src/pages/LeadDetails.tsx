@@ -22,6 +22,7 @@ import {
   ArrowLeft,
   Calendar,
   Clock,
+  Copy,
   Download,
   Edit,
   FileText,
@@ -218,6 +219,10 @@ const LeadDetails: React.FC = () => {
   const canManage = user?.role === 'admin';
   const canEdit = canManage || lead?.assignedTo === user?._id;
   const metaAttributes = useMemo(() => (lead ? getLeadMetaAttributes(lead) : []), [lead]);
+  const olderDuplicateLead = lead?.duplicateOf;
+  const olderDuplicateLeadId = typeof olderDuplicateLead === 'string'
+    ? olderDuplicateLead
+    : olderDuplicateLead?._id;
 
   const syncLeadState = (nextLead: Lead) => {
     setLead(nextLead);
@@ -775,6 +780,29 @@ const LeadDetails: React.FC = () => {
             </div>
 
             <div className="lead-profile-panel__actions">
+              {olderDuplicateLeadId && (
+                <button
+                  type="button"
+                  className="lead-duplicate-link"
+                  onClick={() => navigate(`/leads/${olderDuplicateLeadId}`)}
+                  title={`Open older lead${typeof olderDuplicateLead === 'object' ? `: ${olderDuplicateLead.name}` : ''}`}
+                >
+                  <Copy className="h-4 w-4" />
+                  <span>{lead.duplicateLabel || 'Duplicate'}</span>
+                </button>
+              )}
+              {!olderDuplicateLeadId && lead.duplicateLinks?.map((duplicate) => (
+                <button
+                  key={duplicate._id}
+                  type="button"
+                  className="lead-duplicate-link"
+                  onClick={() => navigate(`/leads/${duplicate._id}`)}
+                  title={`Open ${duplicate.duplicateLabel || 'duplicate'} lead: ${duplicate.name}`}
+                >
+                  <Copy className="h-4 w-4" />
+                  <span>{duplicate.duplicateLabel || 'Duplicate'}</span>
+                </button>
+              ))}
               <a href={`mailto:${lead.email}`} className="icon-button" title="Email lead">
                 <Mail className="h-4 w-4" />
               </a>
